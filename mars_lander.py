@@ -9,7 +9,7 @@ import sys
 from pygame.locals import *
 import time
 from typing import List, Tuple, Dict
-from math import sin, cos, radians
+from math import sin, cos, radians, ceil, floor
 
 # Some constants
 
@@ -56,6 +56,7 @@ class Game:
         current_vec = pygame.math.Vector2()
         while 1:
             Background.update_background(self.back_ground)
+
             Background.SCREEN.blit(self.lander.sprite.image,
                                    self.lander.sprite.rect)
             for event in pygame.event.get():
@@ -97,7 +98,7 @@ class Game:
                 self.lander.steer(LEFT)
 
             if thrusting:
-                power = 0.2
+                power = 0.4  # after some testing this seems good
             else:
                 power = 0
 
@@ -106,12 +107,15 @@ class Game:
 
             thrust_vec = pygame.math.Vector2(new_xy)
             # thrust_vec.scale_to_length(0.2)
-            gravity_vec = pygame.math.Vector2(0, 0.02)
+            gravity_vec = pygame.math.Vector2(0, 0.2)  # feels good
             current_vec += gravity_vec + thrust_vec
+
+            # if -1 < current_vec.length() < 1:
+            #     current_vec.y += 0.01
 
             self.lander.sprite.rect.left += current_vec.x
             self.lander.sprite.rect.top += current_vec.y
-            print(current_vec)
+            print(current_vec)  # useful for debugging physics
             self.clock.tick(60)
             pygame.display.update()
 
@@ -197,7 +201,7 @@ class Sprite(pygame.sprite.Sprite):
     # class taken from: https://stackoverflow.com/a/28005796/9649969
     def __init__(self, image_file, location):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.image.load(image_file).convert()
+        self.image = pygame.image.load(image_file) #.convert()
         self.rect = self.image.get_rect()
         self.rect.left, self.rect.top = location
 
@@ -209,7 +213,7 @@ class Lander(CollidableObject):
         self.instruments = Instruments()
         self.control_failure = None  # set to none again after 2 seconds
         self.sprite = Sprite('resources/lander.png', (300, 150))
-        self.ORIGINALIMAGE = pygame.image.load('resources/lander.png').convert()
+        self.ORIGINALIMAGE = pygame.image.load('resources/lander.png') #.convert()
 
     # def rot_center(self, angle):
     #     """rotate an image while keeping its center and size"""
@@ -221,7 +225,8 @@ class Lander(CollidableObject):
     #     return rot_image
 
     def rot_center(self):
-        """rotate an image while keeping its center"""
+        """rotate an image while keeping its center
+        taken from: http://www.pygame.org/wiki/RotateCenter?parent=CookBook"""
         rot_image = pygame.transform.rotate(self.ORIGINALIMAGE, self.instruments.orientation - 90)
         rot_rect = rot_image.get_rect(center=self.sprite.rect.center)
         self.sprite.image = rot_image
