@@ -22,12 +22,12 @@ class Game:
     def __init__(self):
         self.weight: int = 1200
         self.height: int = 750
-        self.size: Tuple(int, int) = self.weight, self.height
+        self.size: Tuple[int, int] = (self.weight, self.height)
         pygame.init()
         self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
         self.lander = Lander()
-
-
+        self.back_ground = Background('resources/mars_background.png', [0, 0])
+        self.clock = pygame.time.Clock()
 
     @staticmethod
     def quit():
@@ -50,7 +50,14 @@ class Game:
         pass
 
     def run_game(self):
+        rotating_left = False
+        rotating_right = False
+        thrusting = False
+        current_vec = pygame.math.Vector2()
         while 1:
+            Background.update_background(self.back_ground)
+            Background.SCREEN.blit(self.lander.sprite.image,
+                                   self.lander.sprite.rect)
             for event in pygame.event.get():
                 # check for closing window
                 if event.type == pygame.QUIT:
@@ -78,13 +85,52 @@ class Game:
                     elif event.key == K_SPACE:
                         thrusting = True
 
+                    elif event.key == K_r:
+                        self.lander.sprite.rect.left = 300
+                        self.lander.sprite.rect.top = 150
+                        current_vec = pygame.math.Vector2()
+
             # actually do stuff based on previous flags
             if rotating_right:
                 self.lander.steer(RIGHT)
             elif rotating_left:
                 self.lander.steer(LEFT)
+
             if thrusting:
-                self.lander.thrust()
+                power = 0.2
+            else:
+                power = 0
+
+            new_xy = self.lander.instruments.calculate_velocity(
+                self.lander.instruments.orientation, power)
+
+            thrust_vec = pygame.math.Vector2(new_xy)
+            # thrust_vec.scale_to_length(0.2)
+            gravity_vec = pygame.math.Vector2(0, 0.02)
+            current_vec += gravity_vec + thrust_vec
+
+            self.lander.sprite.rect.left += current_vec.x
+            self.lander.sprite.rect.top += current_vec.y
+            print(current_vec)
+            self.clock.tick(60)
+            pygame.display.update()
+
+
+class Background(pygame.sprite.Sprite):
+    # class taken from https://stackoverflow.com/a/28005796/9649969
+
+    SCREEN = pygame.display.set_mode((600, 500))
+
+    def __init__(self, image_file, location):
+        pygame.sprite.Sprite.__init__(self)  # call Sprite initializer
+        self.image = pygame.image.load(image_file)
+        self.rect = self.image.get_rect()
+        self.rect.left, self.rect.top = location
+
+    @classmethod
+    def update_background(cls, back_ground):
+        cls.SCREEN.fill([255, 255, 255])
+        cls.SCREEN.blit(back_ground.image, back_ground.rect)
 
 
 class CollidableObject:
@@ -120,11 +166,22 @@ class Instruments:
         self.y_velocity: float = 0.0
         self.score: int = 0
         self.lives: int = 3  # maybe move somewhere else?
-        self.orientation: int = 0  # angle, 0 & 360 mean thruster facing down
+        self.orientation: int = 90  # angle, 0 & 360 mean thruster facing down
 
-    def calculate_velocity(self, speed: int, angle: int):
-        self.x_velocity = speed * cos(angle)
-        self.y_velocity = speed * sin(angle)
+    def calculate_velocity(self, angle: int, speed) -> Tuple[float, float]:
+        angle = angle % 360
+        if angle == 0:
+            x_vel, y_vel = speed * 1.0, 0
+        elif angle == 90:
+            x_vel, y_vel = 0, speed * 1.0
+        elif angle == 180:
+            x_vel, y_vel = speed * -1, 0
+        elif angle == 270:
+            x_vel, y_vel = 0, speed * -1.0
+        else:
+            x_vel = speed * cos(radians(angle))
+            y_vel = speed * sin(radians(angle))
+        return x_vel, -y_vel
 
     def get_f_time(self) -> str:
         pass
@@ -136,12 +193,39 @@ class Instruments:
         pass
 
 
+class Sprite(pygame.sprite.Sprite):
+    # class taken from: https://stackoverflow.com/a/28005796/9649969
+    def __init__(self, image_file, location):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.image.load(image_file).convert()
+        self.rect = self.image.get_rect()
+        self.rect.left, self.rect.top = location
+
+
 class Lander(CollidableObject):
 
     def __init__(self):
         super().__init__("x", "y")
         self.instruments = Instruments()
         self.control_failure = None  # set to none again after 2 seconds
+        self.sprite = Sprite('resources/lander.png', (300, 150))
+        self.ORIGINALIMAGE = pygame.image.load('resources/lander.png').convert()
+
+    # def rot_center(self, angle):
+    #     """rotate an image while keeping its center and size"""
+    #     orig_rect = self.sprite.rect
+    #     rot_image = pygame.transform.rotate(self.sprite.image, angle)
+    #     rot_rect = orig_rect.copy()
+    #     rot_rect.center = rot_image.get_rect().center
+    #     rot_image = rot_image.subsurface(rot_rect).copy()
+    #     return rot_image
+
+    def rot_center(self):
+        """rotate an image while keeping its center"""
+        rot_image = pygame.transform.rotate(self.ORIGINALIMAGE, self.instruments.orientation - 90)
+        rot_rect = rot_image.get_rect(center=self.sprite.rect.center)
+        self.sprite.image = rot_image
+        self.sprite.rect = rot_rect
 
     def thrust(self):
         pass
@@ -154,6 +238,7 @@ class Lander(CollidableObject):
         elif direction == LEFT:
             self.instruments.orientation -= 3
         self.instruments.orientation %= 360  # to make sure it stays in bounds
+        self.rot_center()
 
     def crash(self):
         pass
