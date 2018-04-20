@@ -4,8 +4,12 @@
 
 # IntelliJ project files
 .idea
-*.iml
-#learning_pygame
-Space_Invaders
+learning_pygame
 out
 gen
+.mypy_cache/
+.pytest_cache/
+.vscode/
+python/
+
+
