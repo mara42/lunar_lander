@@ -144,8 +144,16 @@ def make_square(im, min_size=77, fill_color=(0, 0, 0, 0)):
     new_im.paste(im, ((size - x) // 2, (size - y) // 2))
     return new_im
 
+BASICFONTSIZE = 20
+BASICFONT = pygame.font.Font('freesansbold.ttf', BASICFONTSIZE)
+
+
+def makeText(text, color, bgcolor, top, left):
+    # create the Surface and Rect objects for some text.
+    textSurf = BASICFONT.render(text, True, color, bgcolor)
+    textRect = textSurf.get_rect()
+    textRect.topleft = (top, left)
+    return (textSurf, textRect)
 
 if __name__ == '__main__':
-    test_image = Image.open('resources/lander2.png')
-    new_image = make_square(test_image)
-    new_image.show()
+    

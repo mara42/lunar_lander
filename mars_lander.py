@@ -2,11 +2,23 @@
 ORDER of implementation:
 D:
 ☑ Rocket sprite
-☐ Instruments are rendered in top right corner
+☐ Instruments are rendered in top right corner // MOSTLY DONE
+    ☑ BASIC INSTRUMENTS
+    ☐ DAMAGE
+    ☐ FUEL EMPTY
+    ☐ TIME in correct format
+    ☐ Score
+    ☐ Minor aesthetic stuff
 ☐ Behaviour for hitting screen edges (bounce, carry-over, crash)
+    ☑ Bounce
+    ☐ carry-over
+    ☐ crash
 ☐ Crash behaviour (pause, reset instruments [not score and time], reset x&y pos)
+    ☐ pause
+    ☐ reset function (for all but score and time)
 ☐ Game over behaviour (3 crashes, go out of run_game loop to game over func)
-
+    ☐ lives
+    ☐ game over text
 C:
 ☐ 3 landing pads
 ☐ Crashing behaviour for pads (orientation or speed wrong)
@@ -28,12 +40,13 @@ A1:
 - Design pattern implementaiton potential?
 """
 import operator
+from recordclass import recordclass
 
 import pygame
 import sys
 from pygame.locals import *
 import time
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Type
 from math import sin, cos, radians, ceil, floor
 import random
 
@@ -88,11 +101,13 @@ class Game:
             initial_x_velocity, initial_y_velocity)
         while True:
             Background.update_background(self.back_ground)
+            self.lander.instruments.display_instruments()
             Background.SCREEN.blit(self.lander.sprite.image,
                                    self.lander.sprite.rect)
             if thrusting:
                 Background.SCREEN.blit(self.lander.thrust_sprite.image,
                                        self.lander.thrust_sprite.rect)
+
             for event in pygame.event.get():
                 # check for closing window
                 if event.type == pygame.QUIT:
@@ -139,6 +154,7 @@ class Game:
             if thrusting:
                 power = 0.4  # after some testing this seems good, consider 0.33
                 # TODO: reduce fuel by 5 when thrusting
+                self.lander.instruments.fuel.value -= 5
             else:
                 power = 0
 
@@ -150,10 +166,22 @@ class Game:
             negative_thrust_vector = pygame.math.Vector2(new_xy)
             gravity_vec = pygame.math.Vector2(0, 0.2)  # may consider 0.1
             current_vec += gravity_vec + thrust_vec
+            self.lander.instruments.x_velocity.value = current_vec.x
+            self.lander.instruments.y_velocity.value = current_vec.y
 
             # TODO: add a function for handling lander hitting screen edges
             self.lander.sprite.rect.left += current_vec.x
             self.lander.sprite.rect.top += current_vec.y
+            ALTITUDE_TIMER = 1.42857
+            self.lander.instruments.altitude.value = int(abs(ALTITUDE_TIMER * self.lander.sprite.rect.top - 1000))
+
+            # makes the roof a bouncy castle
+            if self.lander.sprite.rect.top <= 0:
+                self.lander.sprite.rect.top += 1
+                current_vec.y = -current_vec.y
+
+            if self.lander.sprite.rect.bottom >= 700:
+                self.lander.crash()
 
             if thrusting:
                 negative_thrust_vector.scale_to_length(25)
@@ -203,23 +231,71 @@ class EnvironmentalObstacle(Obstacle):
 class MovingObstacle(Obstacle):
     pass
 
+class MyTimer:
+    # from: https://stackoverflow.com/a/39883405/9649969
+    def __init__(self):
+        self.elapsed = 0.0
+        self.running = False
+        self.last_start_time = None
+
+    def start(self):
+        if not self.running:
+            self.running = True
+            self.last_start_time = time.time()
+
+    def pause(self):
+        if self.running:
+            self.running = False
+            self.elapsed += time.time() - self.last_start_time
+
+    @staticmethod
+    def get_elapsed(timer):
+        elapsed = timer.elapsed
+        if timer.running:
+            elapsed += time.time() - timer.last_start_time
+        return elapsed
 
 class Instruments:
 
+    # kinda of a lie, since recordclass is mutable, does work the same way
+    instrument_tuple = recordclass('Instument', ['value', 'x_position', 'y_position', 'formatting'])
+
     def __init__(self):
-        self.time = time.time()  # min:sec, since start of 3 lives
-        self.fuel: int = 500  # kg?
-        self.damage: int = 0  # 100 == game over
-        self.altitude: int = 1000  # 0-1000m
-        self.x_velocity: float = 0.0  # m/s
-        self.y_velocity: float = 0.0  # m/s
-        self.score: int = 0  # incremented by 50
+        # convert below values into named tuples, with position and formatting info
+        self.time = MyTimer()
+        self.time.start()  # this could be done better
+        # TODO: FIX Instrument positoning and formatting to match specs
+        self.time_now = Instruments.instrument_tuple(self.time, 100, 15, MyTimer.get_elapsed)  # min:sec, since start of 3 lives
+        self.fuel = Instruments.instrument_tuple(500, 100, 35, None) # kg?
+        self.damage = Instruments.instrument_tuple(0, 100, 55, None) # 100 == game over
+        self.altitude = Instruments.instrument_tuple(1000, 275, 15, None) # 0-1000m
+        self.x_velocity = Instruments.instrument_tuple(0.0, 275, 35, None)  # m/s
+        self.y_velocity = Instruments.instrument_tuple(0.0, 275, 55, None)  # m/s
+        self.score: int = Instruments.instrument_tuple(0, 100, 80, None)  # incremented by 50
         self.lives: int = 3  # maybe move somewhere else?
         self.orientation: int = 90  # angle, 90 is upright, move to lander class
-        # self.sprite = Sprite('resources/instruments.png', (0, 0))
+        self.BASICFONTSIZE = 20
+        self.BASICFONT = pygame.font.Font('freesansbold.ttf', self.BASICFONTSIZE)
+        self.INSTRUMENTS = [self.time_now, self.fuel, self.damage, self.score,
+                            self.altitude, self.x_velocity, self.y_velocity]
 
     def display_instruments(self):
         # TODO: render all instrument data
+        MESSAGECOLOR = (0, 255, 0)
+        BGCOLOR = (0, 0, 0)
+        for instrument in self.INSTRUMENTS:
+            if instrument.formatting:
+                message = str(instrument.formatting(instrument.value))
+            else:
+                message = str(instrument.value)[:5]
+            if message[0] != '-':
+                # this sould be inside the formatting stuff
+                message = message[:4]
+            message = message.rjust(5)
+            textSurf, textRect = self.makeText(message, MESSAGECOLOR, BGCOLOR, instrument.x_position, instrument.y_position)
+            Background.SCREEN.blit(textSurf, textRect)
+
+    def format_instrument(self, instrument):
         pass
 
     def calculate_velocity(self, angle: int, speed) -> Tuple[float, float]:
@@ -246,6 +322,13 @@ class Instruments:
     def get_f_integer(self, n: int) -> str:
         pass
 
+    def makeText(self, text, color, bgcolor, top, left):
+        # taken from: http://inventwithpython.com/pygame/chapter4.html
+        # create the Surface and Rect objects for some text.
+        textSurf = self.BASICFONT.render(text, True, color, bgcolor)
+        textRect = textSurf.get_rect()
+        textRect.topleft = (top, left)
+        return (textSurf, textRect)
 
 class Sprite(pygame.sprite.Sprite):
     # TODO: import all collideable objects images as pygame.sprites
