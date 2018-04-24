@@ -32,8 +32,9 @@ B:
 ☑ 100% damage == disable all controls
 
 A:
-☐ random meteor storm (5-10 moving sprites, collision causes 25% damage)
-☐ Meteors disappear when hitting bottom, left or right side of screen
+☑ random meteor storm (5-10 moving sprites, collision causes 25% damage)
+☑ Meteors disappear when hitting bottom, left or right side of screen
+    - buggy but do appear
 
 A1:
 - Comments
@@ -41,6 +42,9 @@ A1:
 - Check for potential OOP mistakes or potential improvements
 - Design pattern implementaiton potential?
 """
+import math
+
+import collections
 import operator
 import random
 import sys
@@ -130,6 +134,8 @@ class Game:
         # TODO: make everything before while 1 a function
         self.lander.instruments.reset_velocity()
         broken_time = 0
+        last_meteor_shower_time = 0
+        meteors = []
         while True:
             Background.update_background(self.back_ground)
             for pad in self.landing_pads:
@@ -148,6 +154,9 @@ class Game:
             if self.lander.thrusting:
                 Background.SCREEN.blit(self.lander.thrust_sprite.image,
                                        self.lander.thrust_sprite.rect)
+            for meteor in meteors:
+                Background.SCREEN.blit(meteor.sprite.image,
+                                       meteor.sprite.rect)
 
             for obstacle in self.env_obstacles:
                 if obstacle.is_collided_with(self.lander.sprite):
@@ -185,6 +194,16 @@ class Game:
                 else:  # ran out of fuel
                     self.lander.rotating = False
                     self.lander.thrusting = False
+
+            if random.randint(0, 600) < 60 and time.time() - last_meteor_shower_time > 30:
+                last_meteor_shower_time = time.time()
+                for _ in range(0, random.randint(4, 9)):
+                    meteors.append(MovingObstacle('spaceMeteors_001'))
+            for meteor in meteors:
+                meteor.sprite.rect.left += meteor.velocity.x
+                meteor.sprite.rect.top += meteor.velocity.y
+                if meteor.is_destroyed(self.lander):
+                    meteors.remove(meteor)
 
             if not self.lander.control_issue and time.time() - broken_time > 5:
                 if random.randint(0, 600) < 10:
@@ -305,11 +324,64 @@ class Obstacle(CollidableObject):
 class EnvironmentalObstacle(Obstacle):
 
     def __init__(self, sprite, x, y):
+        super().__init__()
         self.damage = 10
         self.sprite = Sprite(f"resources/obstacles/{sprite}.png", (x, y))
 
 class MovingObstacle(Obstacle):
-    pass
+
+    def __init__(self, sprite):
+        super().__init__()
+        self.meteor_data = MovingObstacle.generate_meteor()
+        self.x_position = self.meteor_data.x_coord
+        self.y_position = self.meteor_data.y_coord
+        self.velocity = self.meteor_data.vector
+        self.sprite = Sprite(f'resources/meteors/{sprite}.png', (self.x_position,
+                                                                 self.y_position))
+
+    def is_destroyed(self, lander):
+        """
+        Check that meteor has left screen or hit the lander, if hit: deal damage
+        :param lander:
+        :return: Nothing
+        """
+        if self.sprite.rect.bottom > 750:
+            return True
+        elif self.sprite.rect.right < 0:
+            return True
+        elif self.sprite.rect.left > 1200:
+            return True
+        elif self.is_collided_with(lander.sprite):
+            lander.instruments.damage.value += 25
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def generate_meteor():
+        meteor_tuple = collections.namedtuple('Meteor', ['x_coord', 'y_coord',
+                                                         'vector'])
+        x_position = random.randint(200, 1000)
+#        x_position = 600
+        y_position = 375 + 80
+        x_vector = random.randint(-5, 5)
+        y_vector = random.randint(1, 5)
+        meteor_vector = pygame.math.Vector2(x_vector, y_vector)
+#       meteor_vector = pygame.math.Vector2(1, 1)
+        if x_vector == 0:
+            new_x_coord = x_position
+        else:
+            angle = meteor_vector.angle_to((1, 0))
+            if x_vector > 0:
+                new_x_coord = int((x_position - y_position) * math.tan(math.radians(angle)))
+            else:
+                new_x_coord = int((x_position + y_position) * math.tan(math.radians(angle)))
+            if new_x_coord > 1200:
+                new_x_coord = 1200
+            elif new_x_coord < 0:
+                new_x_coord = 0
+        meteor = meteor_tuple(new_x_coord, -80, meteor_vector)
+        return meteor
 
 
 class MyTimer:

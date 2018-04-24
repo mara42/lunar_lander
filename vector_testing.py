@@ -1,3 +1,7 @@
+import collections
+import math
+import operator
+import random
 from typing import Tuple
 from math import cos, sin, radians
 from PIL import Image, ImageOps
@@ -155,5 +159,41 @@ def makeText(text, color, bgcolor, top, left):
     textRect.topleft = (top, left)
     return (textSurf, textRect)
 
+
+def generate_meteor2():
+    meteor_tuple = collections.namedtuple('Meteor', ['x_coord', 'y_coord',
+                                          'vector'])
+    x_position = random.randint(0, 1200)
+    y_position = 375
+    x_vector = random.randint(-5, 5)
+    y_vector = random.randint(-5, -1)
+    meteor_vector = pygame.math.Vector2(x_vector, y_vector)
+    if x_vector == 0:
+        new_x_coord = x_position
+    else:
+        temp_vector = pygame.math.Vector2(abs(x_vector), y_vector)
+        angle = meteor_vector.angle_to((1, 0))
+        new_x_coord = int(x_position - y_position * math.tan(math.radians(angle)))
+        if new_x_coord > 1200:
+            new_x_coord = 1200
+        elif new_x_coord < 0:
+            new_x_coord = 0
+    meteor = meteor_tuple(new_x_coord, 0, meteor_vector)
+    return meteor
+
+def generate_meteor():
+    x_position = random.randint(0, 1200)
+    y_position = 375
+    meteor_position = (x_position, y_position)
+    x_vector = random.randint(-5, 5)
+    y_vector = random.randint(-5, -1)
+    meteor_vector = pygame.math.Vector2(x_vector, y_vector)
+    angel = meteor_vector.angle_to((1,0))
+    vector_length = 375 / math.cos(angel)
+    meteor_vector.scale_to_length(vector_length)
+    starting_point = tuple(map(operator.sub, meteor_position, meteor_vector))
+    return starting_point
+
+
 if __name__ == '__main__':
-    
+    generate_meteor()
