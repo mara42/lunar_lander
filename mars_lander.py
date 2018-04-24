@@ -63,6 +63,7 @@ RIGHT = 'Right'
 THRUST = 'Thrust'
 ALTITUDEMULTIPLIER = 1.42857
 
+
 class Game:
     pygame.init()
     BASICFONTSIZE = 20
@@ -73,7 +74,7 @@ class Game:
     LARGEFONT = pygame.font.Font('freesansbold.ttf',
                                  LARGEFONTSIZE)
     MEDIUMFONT = pygame.font.Font('freesansbold.ttf',
-                                 MEDIUMFONTSIZE)
+                                  MEDIUMFONTSIZE)
 
     def __init__(self):
         self.weight: int = 1200
@@ -85,13 +86,16 @@ class Game:
         self.back_ground = Background('resources/mars_background_instr.png',
                                       [0, 0])
         self.clock = pygame.time.Clock()
-        self.landing_pads = [LandingPad('pad', 200-158//2, 750-18),
-                             LandingPad('pad_tall', 600-158//2, 750-82),
-                             LandingPad('pad', 1000-158//2, 750-18)]
+        self.landing_pads = [LandingPad('pad', 200 - 158 // 2, 750 - 18),
+                             LandingPad('pad_tall', 600 - 158 // 2, 750 - 82),
+                             LandingPad('pad', 1000 - 158 // 2, 750 - 18)]
         self.env_obstacles = [EnvironmentalObstacle('building_dome', CollidableObject.get_random_x(), CollidableObject.get_random_y()),
-                              EnvironmentalObstacle('building_station_NE', CollidableObject.get_random_x(), CollidableObject.get_random_y()),
-                              EnvironmentalObstacle('pipe_ramp_NE', CollidableObject.get_random_x(), CollidableObject.get_random_y()),
-                              EnvironmentalObstacle('rocks_ore_SW', CollidableObject.get_random_x(), CollidableObject.get_random_y()),
+                              EnvironmentalObstacle('building_station_NE', CollidableObject.get_random_x(
+                              ), CollidableObject.get_random_y()),
+                              EnvironmentalObstacle('pipe_ramp_NE', CollidableObject.get_random_x(
+                              ), CollidableObject.get_random_y()),
+                              EnvironmentalObstacle('rocks_ore_SW', CollidableObject.get_random_x(
+                              ), CollidableObject.get_random_y()),
                               EnvironmentalObstacle('satellite_SE', CollidableObject.get_random_x(), CollidableObject.get_random_y())]
 
     @staticmethod
@@ -110,7 +114,7 @@ class Game:
 
     @staticmethod
     def pause():
-        while 1:  # pause game
+        while True:  # pause game
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -183,7 +187,8 @@ class Game:
                     self.lander.rotating = False
                     self.lander.thrusting = False
 
-            if random.randint(0, 600) < 60 and time.time() - last_meteor_shower_time > 30:
+            if random.randint(0, 600) < 60 and time.time() - \
+                    last_meteor_shower_time > 30:
                 last_meteor_shower_time = time.time()
                 for _ in range(0, random.randint(4, 9)):
                     meteors.append(MovingObstacle('spaceMeteors_001'))
@@ -245,7 +250,6 @@ class Game:
                 map(operator.sub, self.lander.sprite.rect.center,
                     negative_thrust_vector))
 
-
             self.clock.tick(60)
             pygame.display.update()
 
@@ -254,7 +258,7 @@ class Game:
         message = "GAME OVER"
         MESSAGECOLOR = (255, 0, 0)
         text_surf, text_rect = cls.make_text(message, MESSAGECOLOR,
-                                              0, 0, Game.LARGEFONT)
+                                             0, 0, Game.LARGEFONT)
         text_rect.center = 600, 375
         Background.SCREEN.blit(text_surf, text_rect)
         pygame.display.update()
@@ -302,6 +306,7 @@ class CollidableObject:
         """
         return random.randint(150, 550)
 
+
 class Obstacle(CollidableObject):
 
     def __init__(self):
@@ -315,6 +320,7 @@ class EnvironmentalObstacle(Obstacle):
         super().__init__()
         self.damage = 10
         self.sprite = Sprite(f"resources/obstacles/{sprite}.png", (x, y))
+
 
 class MovingObstacle(Obstacle):
 
@@ -361,9 +367,11 @@ class MovingObstacle(Obstacle):
         else:
             angle = meteor_vector.angle_to((1, 0))
             if x_vector > 0:
-                new_x_coord = int((x_position - y_position) * math.tan(math.radians(angle)))
+                new_x_coord = int((x_position - y_position)
+                                  * math.tan(math.radians(angle)))
             else:
-                new_x_coord = int((x_position + y_position) * math.tan(math.radians(angle)))
+                new_x_coord = int((x_position + y_position)
+                                  * math.tan(math.radians(angle)))
             if new_x_coord > 1200:
                 new_x_coord = 1200
             elif new_x_coord < 0:
@@ -405,7 +413,8 @@ class Instruments:
                                     'formatting'])
 
     def __init__(self):
-        # convert below values into named tuples, with position and formatting info
+        # convert below values into named tuples, with position and formatting
+        # info
         self.time = MyTimer()
         self.time.start()  # this could be done better
         # TODO: FIX Instrument positoning and formatting to match specs
@@ -438,11 +447,10 @@ class Instruments:
                 message = message[:4]
             message = message.rjust(5)
             text_surf, text_rect = Game.make_text(message, MESSAGECOLOR,
-                                                instrument.x_position,
-                                                instrument.y_position,
-                                                Game.BASICFONT)
+                                                  instrument.x_position,
+                                                  instrument.y_position,
+                                                  Game.BASICFONT)
             Background.SCREEN.blit(text_surf, text_rect)
-
 
     def basic_reset(self):
         self.fuel.value = 500
@@ -462,6 +470,7 @@ class Instruments:
             x_vel = speed * cos(radians(angle))
             y_vel = speed * sin(radians(angle))
         return x_vel, -y_vel
+
 
 class Sprite(pygame.sprite.Sprite):
     # TODO: import all collideable objects images as pygame.sprites
@@ -486,7 +495,8 @@ class Lander(CollidableObject):
     def __init__(self):
         super().__init__("x", "y")
         self.instruments = Instruments()
-        self.sprite = Sprite('resources/lander.png', (CollidableObject.get_random_x(), 0))
+        self.sprite = Sprite('resources/lander.png',
+                             (CollidableObject.get_random_x(), 0))
         self.thrust_sprite = Sprite('resources/thrust.png', (600, 1))
         self.orientation: int = 90  # angle, 90 is upright, move to lander class
         self.lives: int = 3  # maybe move somewhere else?
@@ -537,7 +547,7 @@ class Lander(CollidableObject):
         message = "CRASHED"
         MESSAGECOLOR = (255, 0, 0)
         text_surf, text_rect = Game.make_text(message, MESSAGECOLOR,
-                                             0, 0, Game.MEDIUMFONT)
+                                              0, 0, Game.MEDIUMFONT)
         text_rect.center = 600, 375
         Background.SCREEN.blit(text_surf, text_rect)
         pygame.display.update()
@@ -606,7 +616,7 @@ class Lander(CollidableObject):
 
 
 def main():
-    while 1:
+    while True:
         new_game = Game()
         new_game.run_game()
         new_game.game_over()
