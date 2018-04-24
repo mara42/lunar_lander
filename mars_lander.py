@@ -99,18 +99,6 @@ class Game:
         pygame.quit()
         sys.exit()
 
-    def check_for_keypress(self):
-        pass
-
-    def show_game_over(self):
-        pass
-
-    def check_for_quit(self):
-        pass
-
-    def place_objects(self):
-        pass
-
     @staticmethod
     def make_text(text, color, top, left, font):
         # taken from: http://inventwithpython.com/pygame/chapter4.html
@@ -460,9 +448,6 @@ class Instruments:
         self.fuel.value = 500
         self.time.pause()
 
-    def format_instrument(self, instrument):
-        pass
-
     def calculate_velocity(self, angle: int, speed) -> Tuple[float, float]:
         angle = angle % 360
         if angle == 0:
@@ -477,20 +462,6 @@ class Instruments:
             x_vel = speed * cos(radians(angle))
             y_vel = speed * sin(radians(angle))
         return x_vel, -y_vel
-
-    def get_f_time(self) -> str:
-        pass
-
-    def get_f_velocity(self, n: float) -> str:
-        pass
-
-    def get_f_integer(self, n: int) -> str:
-        pass
-
-    def reset_velocity(self):
-        self.x_velocity.value = random.randint(-10, 10) / 10
-        self.y_velocity.value = random.randint(0, 10) / 10
-
 
 class Sprite(pygame.sprite.Sprite):
     # TODO: import all collideable objects images as pygame.sprites
@@ -533,9 +504,6 @@ class Lander(CollidableObject):
         rot_rect = rot_image.get_rect(center=sprite.rect.center)
         sprite.image = rot_image
         sprite.rect = rot_rect
-
-    def thrust(self):
-        pass
 
     def steer(self):
         # implement using orient %= 360 instead
@@ -614,29 +582,6 @@ class Lander(CollidableObject):
         pygame.display.update()
         time.sleep(1)
 
-    def float_in_direction(self, thrust: int):
-        # TODO: delete float_in_direction?
-        # to deal with moving in one direction and thrust being sent to another
-        # http://www.physicsclassroom.com/class/vectors/Lesson-1/Vector-Addition
-        zero_velocity_position = self._calculate_new_position(thrust)
-        return zero_velocity_position
-
-    def _calculate_new_position(self, dist: int):
-        # TODO: delete _calculate_new_position?
-        # polar coordinates
-        x = dist * cos(radians(self.orientation))
-        y = dist * sin(radians(self.orientation))
-        new_position = (self.x_position + x, self.y_position + y)
-        return new_position
-
-    def hit_ceiling(self):
-        # TODO: prevent lander top going above 0, maybe bump with y_vel > 5±2?
-        pass
-
-    def pass_over_side(self):
-        # TODO: lander position left to right and vice versa when hitting edges
-        pass
-
     def generate_control_failure(self):
         self.control_issue.append(random.choice([LEFT, RIGHT]))
         start_time = time.time()
@@ -658,6 +603,7 @@ class Lander(CollidableObject):
         text_surf, text_rect = Game.make_text(message, MESSAGECOLOR,
                                               145, 85, Game.BASICFONT)
         Background.SCREEN.blit(text_surf, text_rect)
+
 
 def main():
     while 1:
