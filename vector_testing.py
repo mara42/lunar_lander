@@ -195,5 +195,13 @@ def generate_meteor():
     return starting_point
 
 
+def generate_vector():
+    x1 = random.randint(0, 1200)
+    if x1 < 600:
+        x2 = random.randint(0, )
+    x2 = random.randint(-1200, 2400)
+    x3 = 0
+    vec = pygame.math.Vector2(x3, 830)
+
 if __name__ == '__main__':
     generate_meteor()
