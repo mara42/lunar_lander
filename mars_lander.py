@@ -28,6 +28,7 @@ ALTITUDEMULTIPLIER = 1.42857
 
 class Game:
     pygame.init()
+    # fonts here used by game_over, landing & crashing messages
     BASICFONTSIZE = 20
     MEDIUMFONTSIZE = 60
     LARGEFONTSIZE = 100
@@ -37,6 +38,7 @@ class Game:
                                  LARGEFONTSIZE)
     MEDIUMFONT = pygame.font.Font('freesansbold.ttf',
                                   MEDIUMFONTSIZE)
+
     def __init__(self):
         """
         weight = game screen width from left to right
@@ -114,45 +116,52 @@ class Game:
                 elif event.type == KEYDOWN or event.type == KEYUP:
                     return
 
-    # TODO: clean run_game function into smaller functions
     def run_game(self):
         """
         Main game loop
         :return: None
         """
         self.lander.instruments.reset_velocity()
-        # TODO: move variables to instance attributes
-        broken_time = 0
-        last_meteor_shower_time = 0
-        meteors = []
+        broken_time = 0  # time since last broken part
+        last_meteor_shower_time = 0  # time since last meteor ocurance
+        meteors = []  # between 5-12ish meteors (slow meteors may linger)
         while True:
-            Background.update_background(self.back_ground)
+            Background.update_background(self.back_ground) # draw background
             for pad in self.landing_pads:
+                # draw landing pads
                 Background.SCREEN.blit(pad.sprite.image,
                                        pad.sprite.rect)
+            # update and draw instruments in top left
             self.lander.instruments.display_instruments()
 
             for obstacle in self.env_obstacles:
+                # draw static obstacles
                 Background.SCREEN.blit(obstacle.sprite.image,
                                        obstacle.sprite.rect)
             if self.lander.lives == 0:
+                # end run_game on 0 lives
                 return
+            # draw lander
             Background.SCREEN.blit(self.lander.sprite.image,
                                    self.lander.sprite.rect)
             if self.lander.thrusting:
+                # if thrusting on, then draw thruster flames
                 Background.SCREEN.blit(self.lander.thrust_sprite.image,
                                        self.lander.thrust_sprite.rect)
             for meteor in meteors:
+                # draw contents of meteors array
                 Background.SCREEN.blit(meteor.sprite.image,
                                        meteor.sprite.rect)
 
             for obstacle in self.env_obstacles:
+                # check for lander colliding with a static obstacle
                 if obstacle.is_collided_with(self.lander.sprite):
                     self.lander.instruments.damage.value += 10
                     self.env_obstacles.remove(obstacle)
 
             self.lander.check_for_issues()
             for pad in self.landing_pads:
+                # check for lander being in contact with a landing pad
                 if pad.is_collided_with(self.lander.sprite):
                     self.lander.land()
 
@@ -179,58 +188,81 @@ class Game:
                     elif event.key == K_SPACE:
                         self.lander.thrusting = True
                     elif event.key == K_r:
+                        # similar to die, but without losing a life
+                        # mostly for debuggin, but the game is hard so, yeah
                         self.lander.reset_lander()
                 else:  # ran out of fuel
                     self.lander.rotating = False
                     self.lander.thrusting = False
 
-            if random.randint(0, 600) < 60 and time.time() - \
+            if random.randint(0, 99) < 1 and time.time() - \
                     last_meteor_shower_time > 30:
+                    # so every second there is ~50% chance of meteors
+                    # based on 1−(1−probability)**FPS
+                    # only if last meteor shower was more than 30 seconds ago
                 last_meteor_shower_time = time.time()
-                for _ in range(0, random.randint(4, 9)):
+                for _ in range(0, random.randint(5, 10)):
+                    # choose a random meteor sprite, create 5, 10 meteors
                     meteors.append(MovingObstacle(f'spaceMeteors_00{random.randint(1,3)}'))
                     # spaceMeteors_004 not used as it's too small to see really
             for meteor in meteors:
+                # update meteor position based on their unique velocity
                 meteor.sprite.rect.left += meteor.velocity.x
                 meteor.sprite.rect.top += meteor.velocity.y
                 if meteor.is_destroyed(self.lander):
+                    # check for meteor hitting lander or leaving screen
                     meteors.remove(meteor)
 
-            if not self.lander.control_issue and time.time() - broken_time > 5:
-                if random.randint(0, 600) < 10:
+            if not self.lander.control_issue and random.randint(0, 99) < 1:
+                # check if an control issue can be applied (again)
+                if time.time() - broken_time > 7:
+                    # ~50% chance every second
                     broken_time = self.lander.generate_control_failure()
             elif len(self.lander.control_issue) == 1:
+                # only remove control issue if only one control is broken
+                # this is due to fuel empty and damage >= 100 being treated
+                # as control issues and added to control issue array
                 time_difference = time.time() - broken_time
                 if time_difference >= 2:
+                    # remove control issue if issue persisted for 2 or more sec
                     self.lander.control_issue = []
 
             if self.lander.rotating in self.lander.control_issue:
+                # prevent turning in an direction if that direction in issues[]
                 self.lander.rotating = False
             if THRUST in self.lander.control_issue:
+                # prevent thrusting if that is in issues[]
                 self.lander.thrusting = False
             if self.lander.control_issue:
+                # display control issue on top left
                 self.lander.display_control_error()
 
             # actually do stuff based on previous flags
             if self.lander.rotating:
+                # rotate 1 degree in a direction
                 self.lander.steer()
             if self.lander.thrusting:
                 power = 0.4  # after some testing this seems good, consider 0.33
                 self.lander.instruments.fuel.value -= 5
             else:
+                # makes thrust_vec (0,0)
                 power = 0
 
             current_vec, thrust_vec = self.lander.calculate_new_vector(power)
 
+            # this vector is used to display thrust_sprite in the correct
+            # position.
             negative_thrust_vector = pygame.math.Vector2(thrust_vec)
 
-            # TODO: add a function for handling lander hitting screen edges
+            # update lander position
             self.lander.sprite.rect.left += current_vec.x
             self.lander.sprite.rect.top += current_vec.y
+            # display current y-coord but with 0y being equal to 1000 altitude
+            # and 750y being equal to 0 altitude
             self.lander.instruments.altitude.value = int(
                 abs(ALTITUDEMULTIPLIER * self.lander.sprite.rect.top - 1000))
 
-            # makes the roof a bouncy castle
+            # makes the roof a bouncy castle, fun easter egg
             if self.lander.sprite.rect.top <= 0:
                 self.lander.sprite.rect.top += 1
                 current_vec.y = -current_vec.y
@@ -242,14 +274,17 @@ class Game:
 
             # display thruster sprite
             if self.lander.thrusting:
+                # length 25 makes sprite appear in correct position
                 negative_thrust_vector.scale_to_length(25)
+                # rotate sprite to same position as lander
                 self.lander.rot_center(self.lander.thrust_sprite)
+            # move thrust sprite to correct x & y position
             self.lander.thrust_sprite.rect.center = tuple(
                 map(operator.sub, self.lander.sprite.rect.center,
                     negative_thrust_vector))
 
-            self.clock.tick(60)
-            pygame.display.update()
+            self.clock.tick(60)  # FPS 60
+            pygame.display.update()  # display new drawings
 
     @classmethod
     def game_over(cls):
@@ -333,14 +368,12 @@ class Obstacle(CollidableObject):
 
     def __init__(self):
         super().__init__("x", "y")
-        self.damage: int = None
 
 
 class EnvironmentalObstacle(Obstacle):
 
     def __init__(self, sprite, x, y):
         super().__init__()
-        self.damage = 10
         self.sprite = Sprite(f"resources/obstacles/{sprite}.png", (x, y))
 
 
@@ -356,10 +389,10 @@ class MovingObstacle(Obstacle):
 
     def __init__(self, sprite):
         super().__init__()
-        self.meteor_data = MovingObstacle.generate_meteor()
-        self.x_position = self.meteor_data.x_coord
-        self.y_position = self.meteor_data.y_coord
-        self.velocity = self.meteor_data.vector
+        self._meteor_data = MovingObstacle.generate_meteor()
+        self.x_position = self._meteor_data.x_coord
+        self.y_position = self._meteor_data.y_coord
+        self.velocity = self._meteor_data.vector
         self.sprite = Sprite(f'resources/meteors/{sprite}.png', (self.x_position,
                                                                  self.y_position))
 
@@ -383,8 +416,6 @@ class MovingObstacle(Obstacle):
 
     @staticmethod
     def generate_meteor():
-        # TODO: vector and position generation could be moved to super
-        # TODO: try funcion where meteor vector is based on random start x and end x coords
         """
         generates a new meteors initial location and constant velocity,
         function attempts to place meteors in such a way that they travel
@@ -455,11 +486,10 @@ class Instruments:
     def __init__(self):
         # convert below values into named tuples, with position and formatting
         # info
-        self.time = MyTimer()
-        self.time.start()  # this could be done better
-        # TODO: FIX Instrument positoning and formatting to match specs
-        self.time_now = Instruments.instrument_tuple(self.time, 100, 15,
-                                                     MyTimer.get_elapsed)  # min:sec, since start of 3 lives
+        self._time = MyTimer()
+        self._time.start()  # this could be done better
+        self._time_now = Instruments.instrument_tuple(self._time, 100, 15,
+                                                      MyTimer.get_elapsed)  # min:sec, since start of 3 lives
         self.fuel = Instruments.instrument_tuple(500, 100, 35, None)  # kg?
         self.damage = Instruments.instrument_tuple(0, 100, 55,
                                                    None)  # 100 == game over
@@ -471,8 +501,8 @@ class Instruments:
                                                        None)  # m/s
         self.score: int = Instruments.instrument_tuple(0, 100, 80,
                                                        None)  # incremented by 50
-        self.INSTRUMENTS = [self.time_now, self.fuel, self.damage, self.score,
-                            self.altitude, self.x_velocity, self.y_velocity]
+        self._INSTRUMENTS = [self._time_now, self.fuel, self.damage, self.score,
+                             self.altitude, self.x_velocity, self.y_velocity]
 
     def display_instruments(self):
         """
@@ -481,7 +511,7 @@ class Instruments:
         :return: None
         """
         MESSAGECOLOR = (0, 255, 0)
-        for instrument in self.INSTRUMENTS:
+        for instrument in self._INSTRUMENTS:
             if instrument.formatting:
                 message = str(instrument.formatting(instrument.value))
             else:
@@ -502,7 +532,7 @@ class Instruments:
         :return: None
         """
         self.fuel.value = 500
-        self.time.pause()
+        self._time.pause()
 
     def calculate_velocity(self, angle: int, speed) -> Tuple[float, float]:
         """
@@ -528,6 +558,7 @@ class Instruments:
     def reset_velocity(self):
         self.x_velocity.value = random.randint(-10, 10) / 10
         self.y_velocity.value = random.randint(0, 10) / 10
+
 
 class Sprite(pygame.sprite.Sprite):
     # class taken from: https://stackoverflow.com/a/28005796/9649969
@@ -602,13 +633,13 @@ class Lander(CollidableObject):
         :return: None
         """
         if self.sprite.rect.bottom > 750:  # 750 is image height
-            self.crash()
+            self._crash()
         elif self.instruments.fuel.value <= 0:
             self.control_issue = ["Fuel", THRUST]
         elif self.instruments.damage.value >= 100:
             self.control_issue = ["All", LEFT, RIGHT, THRUST]
 
-    def crash(self):
+    def _crash(self):
         """
         call crash_message, reset landers tank, pause, set damage to 0 and
         decrement lives
@@ -653,7 +684,7 @@ class Lander(CollidableObject):
         self.velocity.x = random.randint(-10, 10) / 10
         self.velocity.y = random.randint(0, 10) / 10
         Game.pause()
-        self.instruments.time.start()
+        self.instruments._time.start()
 
     def land(self):
         """
@@ -663,10 +694,10 @@ class Lander(CollidableObject):
         :return: None
         """
         x, y = self.velocity
-        if x >= 5.0 or y >= 5.0:
-            self.crash()
+        if abs(x) >= 5.0 or y >= 5.0:
+            self._crash()
         elif self.orientation not in range(85, 95):  # lander upright
-            self.crash()
+            self._crash()
         else:
             self.instruments.score.value += 50
             Lander.landing_message()
@@ -674,7 +705,6 @@ class Lander(CollidableObject):
 
     @staticmethod
     def landing_message():
-        # TODO: combine landing, crash and game over functions
         """
         Display landing message
         :return: None
@@ -698,7 +728,6 @@ class Lander(CollidableObject):
         return start_time
 
     def calculate_new_vector(self, power):
-        # TODO: maybe needs to moved to super?
         """
 
         :param power: float <- distance thrust vector (thrust on or off)
