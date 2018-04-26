@@ -8,6 +8,7 @@ import math
 
 import collections
 import operator
+import os
 import random
 import sys
 import time
@@ -19,6 +20,11 @@ from pygame.locals import *
 from recordclass import recordclass
 
 # Some constants
+
+# __location__ way of finding this files directory is from the link below
+# https://stackoverflow.com/a/4060259/9649969
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 LEFT = 'Left'
 RIGHT = 'Right'
@@ -60,7 +66,7 @@ class Game:
         self._display_surf = pygame.display.set_mode(
             self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
         self.lander = Lander()
-        self.back_ground = Background('resources/mars_background_instr.png',
+        self.back_ground = Background(os.path.join(__location__,'resources/mars_background_instr.png'),
                                       [0, 0])
         self.clock = pygame.time.Clock()
         self.landing_pads = [LandingPad('pad', 200 - 158 // 2, 750 - 18),
@@ -374,7 +380,7 @@ class EnvironmentalObstacle(Obstacle):
 
     def __init__(self, sprite, x, y):
         super().__init__()
-        self.sprite = Sprite(f"resources/obstacles/{sprite}.png", (x, y))
+        self.sprite = Sprite(os.path.join(__location__, f"resources/obstacles/{sprite}.png"), (x, y))
 
 
 class MovingObstacle(Obstacle):
@@ -393,7 +399,7 @@ class MovingObstacle(Obstacle):
         self.x_position = self._meteor_data.x_coord
         self.y_position = self._meteor_data.y_coord
         self.velocity = self._meteor_data.vector
-        self.sprite = Sprite(f'resources/meteors/{sprite}.png', (self.x_position,
+        self.sprite = Sprite(os.path.join(__location__, f'resources/meteors/{sprite}.png'), (self.x_position,
                                                                  self.y_position))
 
     def is_destroyed(self, lander):
@@ -574,7 +580,7 @@ class LandingPad(CollidableObject):
 
     def __init__(self, sprite, x, y):
         super().__init__("x", "y")
-        self.sprite = Sprite(f'resources/landingPads/{sprite}.png', (x, y))
+        self.sprite = Sprite(os.path.join(__location__, f'resources/landingPads/{sprite}.png'), (x, y))
 
 
 class Lander(CollidableObject):
@@ -592,9 +598,9 @@ class Lander(CollidableObject):
     def __init__(self):
         super().__init__("x", "y")
         self.instruments = Instruments()
-        self.sprite = Sprite('resources/lander.png',
+        self.sprite = Sprite(os.path.join(__location__, 'resources/lander.png'),
                              (CollidableObject.get_random_x(), 0))
-        self.thrust_sprite = Sprite('resources/thrust.png', (600, 1))
+        self.thrust_sprite = Sprite(os.path.join(__location__, 'resources/thrust.png'), (600, 1))
         self.orientation: int = 90  # angle, 90 is upright, move to lander class
         self.lives: int = 3
         self.rotating = False
